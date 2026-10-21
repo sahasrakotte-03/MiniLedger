@@ -1,0 +1,39 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Environment variables & Local Secrets
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+*.local
+
+# Embedded PostgreSQL Data Directory
+.pgdata/
+backend/.pgdata/
+
+# Build outputs
+dist/
+build/
+backend/dist/
+frontend/dist/
+web-build/
+.expo/
+.expo-shared/
+
+# Uploaded Receipt Images
+backend/uploads/*
+!backend/uploads/.gitkeep
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+*.log
+
+# OS generated files
+.DS_Store
+Thumbs.db
