@@ -5,6 +5,7 @@
   "dependencies": {
     "@react-native-async-storage/async-storage": "^3.1.1",
     "expo": "~58.0.16",
+    "expo-constants": "^58.0.12",
     "expo-image-picker": "^58.0.10",
     "expo-status-bar": "~58.0.3",
     "lucide-react-native": "^1.61.0",
@@ -20,6 +21,7 @@
   },
   "scripts": {
     "start": "expo start",
+    "start:tunnel": "expo start --tunnel",
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web"
