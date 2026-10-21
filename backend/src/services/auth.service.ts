@@ -55,6 +55,7 @@ export class AuthService {
       phoneNumber: normalized,
       expiresInSeconds: config.otpExpirationMinutes * 60,
       mockNotice: 'Check the backend terminal console for the 6-digit verification code.',
+      devOtp: config.nodeEnv === 'development' ? otp : undefined,
     };
   }
 

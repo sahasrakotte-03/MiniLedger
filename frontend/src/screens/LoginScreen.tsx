@@ -25,6 +25,7 @@ export const LoginScreen: React.FC = () => {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successNotice, setSuccessNotice] = useState<string | null>(null);
   const [timer, setTimer] = useState<number>(300); // 5 minutes
+  const [devOtp, setDevOtp] = useState<string | null>(null);
   const [showServerModal, setShowServerModal] = useState(false);
 
   // Countdown timer for OTP
@@ -57,7 +58,10 @@ export const LoginScreen: React.FC = () => {
     try {
       setIsLoading(true);
       const res = await sendOtp(cleaned);
-      setSuccessNotice('OTP generated! Check backend server console terminal for the 6-digit code.');
+      if (res.devOtp) {
+        setDevOtp(res.devOtp);
+      }
+      setSuccessNotice('OTP generated! Check backend server terminal or use the Auto-Fill button below.');
       setTimer(300);
       setStep('OTP');
     } catch (err: any) {
@@ -228,6 +232,26 @@ export const LoginScreen: React.FC = () => {
                   }}
                   autoFocus
                 />
+
+                {/* Development / Evaluation OTP Quick Helper */}
+                {devOtp && (
+                  <View style={styles.devOtpContainer}>
+                    <View style={styles.devOtpBadge}>
+                      <Text style={styles.devOtpLabel}>Backend Terminal OTP: </Text>
+                      <Text style={styles.devOtpCode}>{devOtp}</Text>
+                    </View>
+                    <TouchableOpacity
+                      style={styles.autoFillBtn}
+                      onPress={() => {
+                        setOtp(devOtp);
+                        if (errorMessage) setErrorMessage(null);
+                      }}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={styles.autoFillText}>⚡ Tap to Auto-Fill</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
 
                 <View style={styles.timerRow}>
                   <Text style={styles.timerLabel}>
@@ -540,5 +564,42 @@ const styles = StyleSheet.create({
   },
   resendDisabled: {
     color: '#94A3B8',
+  },
+  devOtpContainer: {
+    backgroundColor: '#F0FDF4',
+    borderWidth: 1,
+    borderColor: '#BBF7D0',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 16,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  devOtpBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  devOtpLabel: {
+    fontSize: 12,
+    color: '#166534',
+    fontWeight: '500',
+  },
+  devOtpCode: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#059669',
+    letterSpacing: 1,
+  },
+  autoFillBtn: {
+    backgroundColor: '#059669',
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+  },
+  autoFillText: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: '700',
   },
 });

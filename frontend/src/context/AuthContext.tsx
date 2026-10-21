@@ -8,7 +8,12 @@ interface AuthContextType {
   token: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  sendOtp: (phoneNumber: string) => Promise<{ message: string; expiresInSeconds: number; mockNotice?: string }>;
+  sendOtp: (phoneNumber: string) => Promise<{
+    message: string;
+    expiresInSeconds: number;
+    mockNotice?: string;
+    devOtp?: string;
+  }>;
   verifyOtp: (phoneNumber: string, otp: string) => Promise<void>;
   logout: () => Promise<void>;
 }
