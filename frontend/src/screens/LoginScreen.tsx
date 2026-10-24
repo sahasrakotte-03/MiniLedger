@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -9,14 +9,34 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  SafeAreaView,
+  useWindowDimensions,
+  StatusBar as RNStatusBar,
+  Keyboard,
 } from 'react-native';
+import Constants from 'expo-constants';
 import { useAuth } from '../context/AuthContext';
 import { ServerConfigModal } from '../components/ServerConfigModal';
 import { getApiBaseUrl } from '../config/api';
 
 export const LoginScreen: React.FC = () => {
   const { sendOtp, verifyOtp } = useAuth();
+  const { width } = useWindowDimensions();
+  const isSmallMobile = width < 380;
+  const isMobile = width < 640;
+
+  const scrollViewRef = useRef<ScrollView>(null);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+
+  // Safe area top padding:
+  // - Web (mobile): calc(max(env(safe-area-inset-top, 0px), 10px) + 12px)
+  // - Android Native: (RNStatusBar.currentHeight || Constants.statusBarHeight || 24) + 12px
+  // - iOS Native: (Constants.statusBarHeight || 44) + 12px
+  const safeTopPadding = Platform.select({
+    web: (isMobile ? 'calc(max(env(safe-area-inset-top, 0px), 10px) + 12px)' : 20) as any,
+    android: (RNStatusBar.currentHeight || Constants.statusBarHeight || 24) + 12,
+    ios: (Constants.statusBarHeight || 44) + 12,
+    default: 16,
+  });
 
   const [step, setStep] = useState<'PHONE' | 'OTP'>('PHONE');
   const [phoneNumber, setPhoneNumber] = useState('');
@@ -27,6 +47,58 @@ export const LoginScreen: React.FC = () => {
   const [timer, setTimer] = useState<number>(300); // 5 minutes
   const [devOtp, setDevOtp] = useState<string | null>(null);
   const [showServerModal, setShowServerModal] = useState(false);
+
+  // Dynamic keyboard listeners for both Native (iOS/Android) and Web
+  useEffect(() => {
+    const showSub = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      (e) => {
+        setKeyboardHeight(e.endCoordinates.height);
+      }
+    );
+    const hideSub = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      () => {
+        setKeyboardHeight(0);
+      }
+    );
+
+    let onVvResize: (() => void) | null = null;
+    if (Platform.OS === 'web' && typeof window !== 'undefined' && window.visualViewport) {
+      onVvResize = () => {
+        const vv = window.visualViewport;
+        if (vv) {
+          const diff = window.innerHeight - vv.height;
+          if (diff > 80) {
+            setKeyboardHeight(diff);
+          } else {
+            setKeyboardHeight(0);
+          }
+        }
+      };
+      window.visualViewport.addEventListener('resize', onVvResize);
+    }
+
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+      if (onVvResize && typeof window !== 'undefined' && window.visualViewport) {
+        window.visualViewport.removeEventListener('resize', onVvResize);
+      }
+    };
+  }, []);
+
+  const dynamicBottomPadding = isMobile
+    ? Math.max(keyboardHeight + 60, 260)
+    : 90;
+
+  const handleInputFocus = () => {
+    if (isMobile) {
+      setTimeout(() => {
+        scrollViewRef.current?.scrollTo({ y: 80, animated: true });
+      }, 250);
+    }
+  };
 
   // Countdown timer for OTP
   useEffect(() => {
@@ -91,42 +163,56 @@ export const LoginScreen: React.FC = () => {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <View style={styles.rootContainer}>
       <KeyboardAvoidingView
         style={styles.keyboardView}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 20 : 0}
       >
         <ScrollView
-          contentContainerStyle={styles.scrollContent}
+          ref={scrollViewRef}
+          style={styles.scrollView}
+          contentContainerStyle={[
+            styles.scrollContent,
+            { paddingTop: safeTopPadding, paddingBottom: dynamicBottomPadding },
+            isMobile && styles.scrollContentMobile,
+          ]}
           keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={true}
+          alwaysBounceVertical={true}
+          scrollEnabled={true}
         >
-          {/* Top Server Host Indicator */}
-          <View style={styles.topHostBar}>
-            <TouchableOpacity
-              style={styles.hostChip}
-              onPress={() => setShowServerModal(true)}
-            >
-              <View style={styles.hostDot} />
-              <Text style={styles.hostText} numberOfLines={1}>
-                API: {getApiBaseUrl()}
-              </Text>
-              <Text style={styles.hostChangeText}>Settings</Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* MiniLedger Branding Header */}
-          <View style={styles.brandHeader}>
-            <View style={styles.logoBadge}>
-              <Text style={styles.logoIcon}>₹</Text>
+          <View style={styles.formContainer}>
+            {/* Top Server Host Indicator - Compact & Subtle */}
+            <View style={styles.topHostBar}>
+              <TouchableOpacity
+                style={styles.hostChip}
+                onPress={() => setShowServerModal(true)}
+                activeOpacity={0.7}
+              >
+                <View style={styles.hostDot} />
+                <Text style={styles.hostText} numberOfLines={1}>
+                  {getApiBaseUrl().replace('http://', '')}
+                </Text>
+                <Text style={styles.hostChangeText}>⚙️</Text>
+              </TouchableOpacity>
             </View>
-            <Text style={styles.brandName}>MiniLedger</Text>
-            <Text style={styles.brandTagline}>
-              Smart, effortless tracking for money lent to friends
-            </Text>
-          </View>
 
-          {/* Form Card */}
-          <View style={styles.card}>
+            {/* MiniLedger Branding Header - Compact */}
+            <View style={[styles.brandHeader, isMobile && styles.brandHeaderCompact]}>
+              <View style={[styles.logoBadge, isMobile && styles.logoBadgeMobile]}>
+                <Text style={[styles.logoIcon, isMobile && styles.logoIconMobile]}>₹</Text>
+              </View>
+              <Text style={[styles.brandName, isMobile && styles.brandNameMobile]}>
+                MiniLedger
+              </Text>
+              <Text style={styles.brandTagline}>
+                Track money lent to friends effortlessly
+              </Text>
+            </View>
+
+            {/* Form Card */}
+            <View style={[styles.card, isMobile && styles.cardCompact]}>
             {step === 'PHONE' ? (
               <>
                 <Text style={styles.cardTitle}>Sign In with Phone</Text>
@@ -152,13 +238,16 @@ export const LoginScreen: React.FC = () => {
                     placeholder="98765 43210"
                     placeholderTextColor="#94A3B8"
                     keyboardType="phone-pad"
+                    inputMode="tel"
+                    autoComplete="tel"
                     maxLength={14}
                     value={phoneNumber}
                     onChangeText={(val) => {
                       setPhoneNumber(val);
                       if (errorMessage) setErrorMessage(null);
                     }}
-                    autoFocus
+                    autoFocus={!isMobile}
+                    onFocus={handleInputFocus}
                   />
                 </View>
 
@@ -224,6 +313,8 @@ export const LoginScreen: React.FC = () => {
                   placeholder="• • • • • •"
                   placeholderTextColor="#94A3B8"
                   keyboardType="number-pad"
+                  inputMode="numeric"
+                  autoComplete={Platform.OS === 'web' ? ('one-time-code' as any) : 'sms-otp'}
                   maxLength={6}
                   value={otp}
                   onChangeText={(val) => {
@@ -231,6 +322,7 @@ export const LoginScreen: React.FC = () => {
                     if (errorMessage) setErrorMessage(null);
                   }}
                   autoFocus
+                  onFocus={handleInputFocus}
                 />
 
                 {/* Development / Evaluation OTP Quick Helper */}
@@ -288,35 +380,74 @@ export const LoginScreen: React.FC = () => {
               </>
             )}
           </View>
-        </ScrollView>
+        </View>
+      </ScrollView>
       </KeyboardAvoidingView>
 
       <ServerConfigModal
         visible={showServerModal}
         onClose={() => setShowServerModal(false)}
       />
-    </SafeAreaView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
-  safeArea: {
+  rootContainer: {
     flex: 1,
     backgroundColor: '#F8FAFC',
+    width: '100%',
+    ...Platform.select({
+      web: {
+        minHeight: '100dvh' as any,
+      },
+    }),
   },
   keyboardView: {
     flex: 1,
+    width: '100%',
+    ...Platform.select({
+      web: {
+        minHeight: '100dvh' as any,
+      },
+    }),
+  },
+  scrollView: {
+    flex: 1,
+    width: '100%',
+    ...Platform.select({
+      web: {
+        overflow: 'visible' as any,
+        minHeight: '100dvh' as any,
+      },
+    }),
   },
   scrollContent: {
     flexGrow: 1,
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 40,
+    paddingHorizontal: 16,
+    paddingTop: 24,
+    paddingBottom: 90,
     justifyContent: 'center',
+    alignItems: 'center',
+    width: '100%',
+    ...Platform.select({
+      web: {
+        minHeight: '100dvh' as any,
+      },
+    }),
+  },
+  scrollContentMobile: {
+    paddingBottom: 120,
+    justifyContent: 'flex-start',
+  },
+  formContainer: {
+    width: '100%',
+    maxWidth: 420,
+    alignSelf: 'center',
   },
   topHostBar: {
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 10,
   },
   hostChip: {
     flexDirection: 'row',
@@ -324,14 +455,14 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
     borderColor: '#E2E8F0',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 16,
     gap: 6,
   },
   hostDot: {
-    width: 8,
-    height: 8,
+    width: 7,
+    height: 7,
     borderRadius: 4,
     backgroundColor: '#10B981',
   },
@@ -341,69 +472,87 @@ const styles = StyleSheet.create({
     maxWidth: 200,
   },
   hostChangeText: {
-    fontSize: 11,
-    color: '#059669',
-    fontWeight: '700',
+    fontSize: 12,
   },
   brandHeader: {
     alignItems: 'center',
-    marginBottom: 28,
+    marginBottom: 16,
+  },
+  brandHeaderCompact: {
+    marginBottom: 12,
   },
   logoBadge: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
+    width: 52,
+    height: 52,
+    borderRadius: 26,
     backgroundColor: '#059669',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 8,
     shadowColor: '#059669',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.3,
-    shadowRadius: 10,
-    elevation: 4,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  logoBadgeMobile: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    marginBottom: 6,
   },
   logoIcon: {
-    fontSize: 32,
+    fontSize: 26,
     fontWeight: '800',
     color: '#FFFFFF',
   },
+  logoIconMobile: {
+    fontSize: 20,
+  },
   brandName: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: '800',
     color: '#0F172A',
     letterSpacing: -0.5,
-    marginBottom: 6,
+    marginBottom: 2,
+  },
+  brandNameMobile: {
+    fontSize: 20,
   },
   brandTagline: {
-    fontSize: 14,
+    fontSize: 12,
     color: '#64748B',
     textAlign: 'center',
     maxWidth: 280,
   },
   card: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 24,
-    padding: 24,
+    borderRadius: 20,
+    padding: 22,
     borderWidth: 1,
     borderColor: '#E2E8F0',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.05,
-    shadowRadius: 12,
-    elevation: 3,
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
+    width: '100%',
+  },
+  cardCompact: {
+    padding: 16,
+    borderRadius: 16,
   },
   cardTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '700',
     color: '#0F172A',
-    marginBottom: 6,
+    marginBottom: 4,
   },
   cardSubtitle: {
-    fontSize: 14,
+    fontSize: 13,
     color: '#64748B',
-    marginBottom: 20,
-    lineHeight: 20,
+    marginBottom: 14,
+    lineHeight: 18,
   },
   boldText: {
     fontWeight: '700',
@@ -471,65 +620,65 @@ const styles = StyleSheet.create({
   },
   phoneInput: {
     flex: 1,
-    paddingHorizontal: 14,
-    paddingVertical: 14,
-    fontSize: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    fontSize: 15,
     fontWeight: '600',
     color: '#0F172A',
   },
   otpInput: {
     borderWidth: 1,
     borderColor: '#CBD5E1',
-    borderRadius: 14,
+    borderRadius: 12,
     backgroundColor: '#F8FAFC',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    fontSize: 22,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontSize: 20,
     fontWeight: '800',
-    letterSpacing: 8,
+    letterSpacing: 6,
     textAlign: 'center',
     color: '#0F172A',
-    marginBottom: 16,
+    marginBottom: 14,
   },
   mockNoticeBox: {
     backgroundColor: '#EFF6FF',
     borderWidth: 1,
     borderColor: '#BFDBFE',
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 20,
+    borderRadius: 10,
+    padding: 10,
+    marginBottom: 14,
   },
   mockNoticeTitle: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '700',
     color: '#1E40AF',
-    marginBottom: 4,
+    marginBottom: 2,
   },
   mockNoticeDesc: {
-    fontSize: 12,
+    fontSize: 11,
     color: '#3B82F6',
-    lineHeight: 17,
+    lineHeight: 15,
   },
   primaryButton: {
     backgroundColor: '#059669', // Emerald Green fintech accent
-    borderRadius: 14,
-    paddingVertical: 15,
+    borderRadius: 12,
+    paddingVertical: 13,
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#059669',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 2,
   },
   buttonDisabled: {
     opacity: 0.6,
   },
   primaryButtonText: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '700',
     color: '#FFFFFF',
-    letterSpacing: 0.3,
+    letterSpacing: 0.2,
   },
   otpHeaderRow: {
     marginBottom: 12,

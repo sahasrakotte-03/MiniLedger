@@ -41,26 +41,44 @@ const upload = multer({
   },
 });
 
+function receiveReceipt(req: AuthenticatedRequest, res: Response, next: (err?: any) => void) {
+  upload.single('receipt')(req, res, (err: any) => {
+    if (err) {
+      next(err);
+      return;
+    }
+    next();
+  });
+}
+
 router.post(
   '/receipt',
   authenticateJwt,
-  upload.single('receipt'),
-  (req: AuthenticatedRequest, res: Response) => {
-    if (!req.file) {
-      throw new AppError('No image file uploaded', 400);
-    }
+  receiveReceipt,
+  (req: AuthenticatedRequest, res: Response, next: (err?: any) => void) => {
+    try {
+      if (!req.file) {
+        return next(new AppError('No image file uploaded. Expected multipart field name "receipt".', 400));
+      }
 
-    const fileUrl = `/uploads/${req.file.filename}`;
-    res.status(200).json({
-      success: true,
-      message: 'Receipt uploaded successfully',
-      data: {
-        url: fileUrl,
-        filename: req.file.filename,
-        size: req.file.size,
-        mimetype: req.file.mimetype,
-      },
-    });
+      if (!req.file.size) {
+        return next(new AppError('Uploaded image was empty. Please choose a valid JPEG or PNG file.', 400));
+      }
+
+      const fileUrl = `/uploads/${req.file.filename}`;
+      res.status(200).json({
+        success: true,
+        message: 'Receipt uploaded successfully',
+        data: {
+          url: fileUrl,
+          filename: req.file.filename,
+          size: req.file.size,
+          mimetype: req.file.mimetype,
+        },
+      });
+    } catch (err) {
+      next(err);
+    }
   }
 );
 

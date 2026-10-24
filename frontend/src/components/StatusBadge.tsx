@@ -51,10 +51,11 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     borderWidth: 1,
     alignSelf: 'flex-start',
+    flexShrink: 0,
   },
   badgeSmall: {
     paddingHorizontal: 8,
-    paddingVertical: 2,
+    paddingVertical: 2.5,
   },
   dot: {
     width: 6,

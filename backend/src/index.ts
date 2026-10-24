@@ -12,6 +12,20 @@ async function bootstrap() {
     await prisma.$connect();
     console.log('[MiniLedger] Successfully connected to PostgreSQL via Prisma.');
 
+    // Ensure database tables exist without breaking initial setup
+    try {
+      await prisma.$queryRaw`SELECT 1 FROM "loans" LIMIT 1`;
+    } catch {
+      console.log('[MiniLedger] Tables missing, synchronizing schema with database...');
+      const { execSync } = await import('child_process');
+      const path = await import('path');
+      execSync('npx prisma db push --skip-generate', {
+        cwd: path.resolve(__dirname, '..'),
+        stdio: 'inherit',
+      });
+      console.log('[MiniLedger] Schema synchronized successfully.');
+    }
+
     const server = app.listen(config.port, '0.0.0.0', () => {
       console.log('\n======================================================');
       console.log(`🚀 MiniLedger Backend Server is running!`);

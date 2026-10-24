@@ -13,12 +13,16 @@ export function getStartOfTodayUTC(): Date {
 }
 
 export function parseDueDate(dateInput: string | Date): Date {
+  if (!dateInput) {
+    throw new Error('Invalid date format');
+  }
   if (dateInput instanceof Date) {
     return new Date(Date.UTC(dateInput.getUTCFullYear(), dateInput.getUTCMonth(), dateInput.getUTCDate()));
   }
 
+  const str = String(dateInput);
   // Handle YYYY-MM-DD or ISO strings
-  const match = dateInput.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  const match = str.match(/^(\d{4})-(\d{2})-(\d{2})/);
   if (match) {
     const year = parseInt(match[1], 10);
     const month = parseInt(match[2], 10) - 1;
@@ -26,7 +30,7 @@ export function parseDueDate(dateInput: string | Date): Date {
     return new Date(Date.UTC(year, month, day, 0, 0, 0, 0));
   }
 
-  const parsed = new Date(dateInput);
+  const parsed = new Date(str);
   if (isNaN(parsed.getTime())) {
     throw new Error('Invalid date format');
   }

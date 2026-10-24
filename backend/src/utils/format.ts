@@ -2,8 +2,20 @@
  * Formatting utilities for Indian Currency (INR) and Indian Phone Numbers.
  */
 
-export function formatINR(amount: number | string): string {
-  const num = typeof amount === 'string' ? parseFloat(amount) : amount;
+export function formatINR(amount: number | string | any): string {
+  let num: number;
+  if (typeof amount === 'number') {
+    num = amount;
+  } else if (typeof amount === 'string') {
+    num = parseFloat(amount);
+  } else if (amount && typeof amount.toNumber === 'function') {
+    num = amount.toNumber();
+  } else if (amount && typeof amount.toString === 'function') {
+    num = parseFloat(amount.toString());
+  } else {
+    num = Number(amount);
+  }
+
   if (isNaN(num)) return '₹0.00';
 
   return new Intl.NumberFormat('en-IN', {

@@ -6,6 +6,7 @@ import {
   StyleSheet,
   Modal,
   TouchableOpacity,
+  ScrollView,
   Platform,
 } from 'react-native';
 import { getApiBaseUrl, setApiBaseUrl } from '../config/api';
@@ -36,47 +37,59 @@ export const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <View style={styles.overlay}>
         <View style={styles.card}>
-          <Text style={styles.title}>Backend API Settings</Text>
-          <Text style={styles.description}>
-            Configure the server URL. If using an Android Emulator use 10.0.2.2. If testing on a physical device, enter your computer's local Wi-Fi IP address.
-          </Text>
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            contentContainerStyle={styles.scrollContainer}
+          >
+            <Text style={styles.title}>Backend API Settings</Text>
+            <Text style={styles.description}>
+              Configure the server URL. If using an Android Emulator use 10.0.2.2. If testing on a physical device, enter your computer's local Wi-Fi IP address.
+            </Text>
 
-          <Text style={styles.inputLabel}>Server Base URL</Text>
-          <TextInput
-            style={styles.input}
-            value={url}
-            onChangeText={setUrl}
-            placeholder="http://192.168.1.X:5000"
-            autoCapitalize="none"
-            autoCorrect={false}
-          />
+            <Text style={styles.inputLabel}>Server Base URL</Text>
+            <TextInput
+              style={styles.input}
+              value={url}
+              onChangeText={setUrl}
+              placeholder="http://192.168.1.X:5000"
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
 
-          <View style={styles.presetSection}>
-            <Text style={styles.presetLabel}>Quick Presets:</Text>
-            <View style={styles.presetButtons}>
-              <TouchableOpacity
-                style={styles.presetBtn}
-                onPress={() => handlePreset('http://localhost:5000')}
-              >
-                <Text style={styles.presetBtnText}>localhost:5000</Text>
+            <View style={styles.presetSection}>
+              <Text style={styles.presetLabel}>Quick Presets:</Text>
+              <View style={styles.presetButtons}>
+                <TouchableOpacity
+                  style={styles.presetBtn}
+                  onPress={() => handlePreset('http://10.239.186.173:5000')}
+                >
+                  <Text style={styles.presetBtnText}>Wi-Fi: 10.239.186.173:5000</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.presetBtn}
+                  onPress={() => handlePreset('http://localhost:5000')}
+                >
+                  <Text style={styles.presetBtnText}>localhost:5000</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.presetBtn}
+                  onPress={() => handlePreset('http://10.0.2.2:5000')}
+                >
+                  <Text style={styles.presetBtnText}>10.0.2.2:5000 (Android Emulator)</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            <View style={styles.footer}>
+              <TouchableOpacity style={styles.cancelBtn} onPress={onClose}>
+                <Text style={styles.cancelBtnText}>Cancel</Text>
               </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.presetBtn}
-                onPress={() => handlePreset('http://10.0.2.2:5000')}
-              >
-                <Text style={styles.presetBtnText}>10.0.2.2:5000 (Android)</Text>
+              <TouchableOpacity style={styles.saveBtn} onPress={handleSave}>
+                <Text style={styles.saveBtnText}>Save URL</Text>
               </TouchableOpacity>
             </View>
-          </View>
-
-          <View style={styles.footer}>
-            <TouchableOpacity style={styles.cancelBtn} onPress={onClose}>
-              <Text style={styles.cancelBtnText}>Cancel</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.saveBtn} onPress={handleSave}>
-              <Text style={styles.saveBtnText}>Save URL</Text>
-            </TouchableOpacity>
-          </View>
+          </ScrollView>
         </View>
       </View>
     </Modal>
@@ -89,19 +102,23 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(15, 23, 42, 0.65)',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 24,
+    padding: 16,
   },
   card: {
     backgroundColor: '#FFFFFF',
     borderRadius: 20,
-    padding: 24,
     width: '100%',
     maxWidth: 420,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.15,
-    shadowRadius: 20,
-    elevation: 8,
+    maxHeight: '90%',
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.12,
+    shadowRadius: 16,
+    elevation: 6,
+    overflow: 'hidden',
+  },
+  scrollContainer: {
+    padding: 20,
   },
   title: {
     fontSize: 18,
@@ -160,7 +177,8 @@ const styles = StyleSheet.create({
   footer: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
-    gap: 12,
+    gap: 10,
+    flexWrap: 'wrap',
   },
   cancelBtn: {
     paddingVertical: 10,

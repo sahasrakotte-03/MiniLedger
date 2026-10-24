@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User } from '../types';
 import { api } from '../services/api.client';
 import { storage } from '../services/storage';
+import { setApiBaseUrl } from '../config/api';
 
 interface AuthContextType {
   user: User | null;
@@ -22,6 +23,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const TOKEN_KEY = 'miniledger_jwt_token';
 const USER_KEY = 'miniledger_user_profile';
+const CUSTOM_API_URL_KEY = 'CUSTOM_API_URL';
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -32,6 +34,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     const restoreSession = async () => {
       try {
+        // 1. Restore custom API URL first so all subsequent calls go to the right server
+        const savedApiUrl = await storage.getItem(CUSTOM_API_URL_KEY);
+        if (savedApiUrl) {
+          setApiBaseUrl(savedApiUrl);
+        }
+
+        // 2. Restore JWT session
         const storedToken = await storage.getItem(TOKEN_KEY);
         const storedUser = await storage.getItem(USER_KEY);
 

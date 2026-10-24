@@ -59,7 +59,14 @@ export async function ensureDatabase(): Promise<void> {
       persistent: true,
     });
 
-    await pgInstance.initialise();
+    const isAlreadyInitialized = fs.existsSync(path.join(dataDir, 'PG_VERSION'));
+    if (!isAlreadyInitialized) {
+      try {
+        await pgInstance.initialise();
+      } catch (initErr) {
+        console.log('[Database] Directory already initialized or init warning, proceeding to start...');
+      }
+    }
     await pgInstance.start();
 
     // Create miniledger database if it does not exist

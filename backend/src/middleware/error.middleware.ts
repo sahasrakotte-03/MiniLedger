@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { ZodError } from 'zod';
+import multer from 'multer';
 
 export class AppError extends Error {
   statusCode: number;
@@ -40,6 +41,21 @@ export function errorHandler(
       success: false,
       error: err.message,
       ...(err.details ? { details: err.details } : {}),
+    });
+    return;
+  }
+
+  if (err instanceof multer.MulterError) {
+    const message =
+      err.code === 'LIMIT_FILE_SIZE'
+        ? 'File is too large. Maximum allowed size is 5 MB.'
+        : err.code === 'LIMIT_UNEXPECTED_FILE'
+          ? 'Unexpected upload field. Please send the image as "receipt".'
+          : err.message || 'Receipt upload failed.';
+
+    res.status(400).json({
+      success: false,
+      error: message,
     });
     return;
   }
